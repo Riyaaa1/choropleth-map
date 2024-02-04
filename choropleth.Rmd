@@ -1,0 +1,105 @@
+---
+title: "Choropleth map"
+author: "Riya"
+date: "Febraury 4, 2024"
+output: 
+  html_document:
+    keep_md: true
+---
+
+
+```{r,warning=FALSE,message=FALSE}
+# Loading essential libraries
+setwd("/home/riya/wd")
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(sf)
+library(htmltools)
+
+```
+
+
+```{r,warning=FALSE}
+# Load Shapefiles
+nepal_shape_data<- sf::st_read("Local Unit/local_unit.shp")
+
+```
+
+
+
+```{r}
+# simple plot to visualise the choropleth map 
+p<-ggplot(data=nepal_shape_data)+
+  geom_sf()
+ggsave("simple_chloropleth.png",plot=p,width = 5,height = 3)
+```
+Let's map 2023 Dengue cases to this plot.
+```{r}
+dengue_data<-read.csv("processed_dengue_data.csv")
+head(dengue_data)
+```
+
+# 
+Since I want to visualise the total cases per district
+```{r}
+nepal_shape_data
+```
+
+```{r}
+district_shape_data<- nepal_shape_data%>%
+  group_by(DISTRICT)%>%
+  summarise()
+district_shape_data
+```
+
+```{r}
+dengue_cases_shape_df<-left_join(dengue_data,district_shape_data)%>%
+  st_as_sf()
+dengue_cases_shape_df
+```
+Now we are ready to plot our choropleth map to visualise total dengue cases per district
+```{r}
+simple_choroplot<-dengue_cases_shape_df%>%
+  ggplot()+
+  geom_sf(aes(fill=Total,))
+ggsave("simple_choroplot.png",plot=simple_choroplot,width = 7,height = 4.3)
+```
+
+```{r}
+simple_choroplot1<-dengue_cases_shape_df%>%
+  ggplot()+
+  geom_sf(aes(fill=Total,text=paste(DISTRICT,":",Total)),color="white",size=0.5)+
+    scale_fill_gradient(high="#084594",low="#c6dbef",guide="colorbar") +
+    theme(
+      axis.ticks = element_blank(),
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      panel.background = element_blank(),
+      panel.border = element_rect(colour = "gray", fill=NA, size=0.5))+
+  ggtitle("District wise distribution of dengue")
+
+```
+Who doesn't love interactive plots? In R, you can convert any plot to dynamic by simply passing them to ggplotly().
+```{r}
+plotly_choropleth<-ggplotly(simple_choroplot1,tooltip = "text")
+
+```
+
+```{r}
+htmlwidgets::saveWidget(plotly_choropleth, "index.html")
+
+htmltools::tags$iframe(
+  src=file.path(getwd(), "index.html"),
+  width="100%",
+  height="600",
+  scrolling="no",
+  seamless="seamless",
+  frameBorder="0"
+)
+
+```
+
